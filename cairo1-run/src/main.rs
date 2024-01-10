@@ -36,6 +36,7 @@ use cairo_vm::air_public_input::PublicInputError;
 use cairo_vm::cairo_run;
 use cairo_vm::cairo_run::EncodeTraceError;
 use cairo_vm::hint_processor::cairo_1_hint_processor::hint_processor::Cairo1HintProcessor;
+use cairo_vm::hint_processor::rpc_hint_processor::RpcHintProcessor;
 use cairo_vm::serde::deserialize_program::BuiltinName;
 use cairo_vm::serde::deserialize_program::{ApTracking, FlowTrackingData, HintParams};
 use cairo_vm::types::errors::program_errors::ProgramError;
@@ -234,7 +235,8 @@ fn run(args: impl Iterator<Item = String>) -> Result<Vec<MaybeRelocatable>, Erro
 
     let (processor_hints, program_hints) = build_hints_vec(instructions.clone());
 
-    let mut hint_processor = Cairo1HintProcessor::new(&processor_hints, RunResources::default());
+    let hint_processor = Cairo1HintProcessor::new(&processor_hints, RunResources::default());
+    let mut hint_processor = RpcHintProcessor::new(hint_processor);
 
     let data: Vec<MaybeRelocatable> = instructions
         .flat_map(|inst| inst.assemble().encode())

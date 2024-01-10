@@ -693,6 +693,7 @@ dependencies = [
  "bitvec",
  "cairo-lang-casm",
  "cairo-lang-starknet",
+ "cairo-lang-utils",
  "criterion",
  "generic-array",
  "hashbrown 0.14.2",
