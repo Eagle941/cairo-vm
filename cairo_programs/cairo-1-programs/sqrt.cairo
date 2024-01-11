@@ -4,15 +4,20 @@ use core::debug::PrintTrait;
 
 #[derive(Drop, Serde)]
 struct Request {
-    n: felt252
+    n: u32
 }
 
 #[derive(Drop, Serde)]
 struct Result {
-    n: felt252
+    n: u32
 }
 
-fn main() -> felt252 {
+// extern fn oracle<const selector: felt252>(
+//     method: Span<felt252>,
+//     arg: Span<felt252>,
+// ) -> Span<felt252> implicits() nopanic;
+
+fn main() -> u32 {
     let request = Request { n: 1764 };
     let mut request_bytes = ArrayTrait::new();
     request.serialize(ref request_bytes);
@@ -21,4 +26,4 @@ fn main() -> felt252 {
     let result = Serde::<Result>::deserialize(ref result_bytes).unwrap();
 
     result.n
-}
+}   

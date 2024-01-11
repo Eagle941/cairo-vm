@@ -26,6 +26,7 @@ cairo-1-hints = [
     "dep:cairo-lang-utils",
     "dep:ark-ff",
     "dep:ark-std",
+    "dep:reqwest",
 ]
 
 # Note that these features are not retro-compatible with the cairo Python VM.
@@ -72,6 +73,7 @@ bitvec = { workspace = true }
 cairo-lang-starknet = { workspace = true, optional = true }
 cairo-lang-casm = { workspace = true, optional = true }
 cairo-lang-utils = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
 
 # TODO: check these dependencies for wasm compatibility
 ark-ff = { workspace = true, optional = true }

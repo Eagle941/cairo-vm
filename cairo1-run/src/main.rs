@@ -78,6 +78,9 @@ struct Args {
     memory_file: Option<PathBuf>,
     #[clap(long = "layout", default_value = "plain", value_parser=validate_layout)]
     layout: String,
+    // TODO: parse as an addr
+    #[clap(long)]
+    oracle_server: Option<String>,
 }
 
 fn validate_layout(value: &str) -> Result<String, String> {
@@ -236,7 +239,7 @@ fn run(args: impl Iterator<Item = String>) -> Result<Vec<MaybeRelocatable>, Erro
     let (processor_hints, program_hints) = build_hints_vec(instructions.clone());
 
     let hint_processor = Cairo1HintProcessor::new(&processor_hints, RunResources::default());
-    let mut hint_processor = RpcHintProcessor::new(hint_processor);
+    let mut hint_processor = RpcHintProcessor::new(hint_processor, args.oracle_server);
 
     let data: Vec<MaybeRelocatable> = instructions
         .flat_map(|inst| inst.assemble().encode())
