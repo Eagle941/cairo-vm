@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use cairo_lang_casm::{hints::{Hint, StarknetHint}, operand::{ResOperand, CellRef}};
 use cairo_lang_utils::bigint::BigIntAsHex;
+use num_traits::ToPrimitive;
 use crate::{Felt252, vm::{errors::vm_errors::VirtualMachineError, runners::cairo_runner::ResourceTracker}};
 
 use crate::{vm::{errors::{hint_errors::HintError, memory_errors::MemoryError}, vm_core::VirtualMachine}, types::{exec_scope::ExecutionScopes, relocatable::{Relocatable, MaybeRelocatable}}};
@@ -46,13 +47,11 @@ impl RpcHintProcessor {
         let res_segment_start = res_segment.ptr;
         match selector {
             "oracle" => {
-                println!("let the oracle decide... Inputs:");
-                for input in inputs {
-                    println!(" - {}", input.to_bigint())
-                }
 
                 let mut map = HashMap::new();
-                map.insert("n", 1764);
+                map.insert("n", inputs[0].to_bigint().to_u64().unwrap());
+                println!("let the oracle decide... Inputs: {map:?}");
+
 
                 let client = reqwest::blocking::Client::new();
                 let resp = client.post(self.server.as_ref().unwrap())
