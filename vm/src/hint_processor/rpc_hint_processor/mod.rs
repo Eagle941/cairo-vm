@@ -46,11 +46,24 @@ impl RpcHintProcessor {
         let res_segment_start = res_segment.ptr;
         match selector {
             "oracle" => {
-                let resp = reqwest::blocking::get(self.server.as_ref().unwrap()).unwrap()
-                    .json::<HashMap<String, usize>>().unwrap();
-                println!("{:#?}", resp);
+                println!("let the oracle decide... Inputs:");
+                for input in inputs {
+                    println!(" - {}", input.to_bigint())
+                }
+
+                let mut map = HashMap::new();
+                map.insert("n", 1764);
+
+                let client = reqwest::blocking::Client::new();
+                let resp = client.post(self.server.as_ref().unwrap())
+                    .json(&map)
+                    .send()
+                    .unwrap()
+                    .json::<HashMap<String, usize>>()
+                    .unwrap();
+
                 let output = resp["result"];
-                println!("let the oracle decide... inputs: {inputs:?}, output: {output}");
+                println!("Output: {output}");
                 res_segment.write(output)?;
 
                 
