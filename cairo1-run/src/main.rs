@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+use anyhow::{bail, ensure, Context, Result};
 use bincode::enc::write::Writer;
 use cairo_lang_casm::casm;
 use cairo_lang_casm::casm_extend;
@@ -19,6 +20,7 @@ use cairo_lang_sierra::extensions::NamedType;
 use cairo_lang_sierra::ids::ConcreteTypeId;
 use cairo_lang_sierra::program::Function;
 use cairo_lang_sierra::program::Program as SierraProgram;
+use cairo_lang_sierra::program::VersionedProgram;
 use cairo_lang_sierra::program_registry::{ProgramRegistry, ProgramRegistryError};
 use cairo_lang_sierra::{extensions::gas::CostTokenType, ProgramParser};
 use cairo_lang_sierra_ap_change::calc_ap_changes;
@@ -58,9 +60,18 @@ use cairo_vm::{
     },
     Felt252,
 };
+use camino::Utf8PathBuf;
 use clap::{CommandFactory, Parser, ValueHint};
+use indoc::formatdoc;
 use itertools::{chain, Itertools};
+use scarb_metadata::{Metadata as ScarbMetadata, MetadataCommand, ScarbCommand};
+use scarb_ui::args::PackagesFilter;
+use scarb_ui::components::Status;
+use scarb_ui::{Message, OutputFormat, Ui, Verbosity};
+
 use std::borrow::Cow;
+use std::env;
+use std::fs;
 use std::io::BufWriter;
 use std::io::Write;
 use std::path::PathBuf;
@@ -70,6 +81,9 @@ use thiserror::Error;
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
+    /// Name of the package.
+    #[command(flatten)]
+    packages_filter: PackagesFilter,
     #[clap(value_parser, value_hint=ValueHint::FilePath)]
     filename: PathBuf,
     #[clap(long = "trace_file", value_parser)]
@@ -118,8 +132,8 @@ enum Error {
     ProgramRegistry(#[from] Box<ProgramRegistryError>),
     #[error(transparent)]
     Compilation(#[from] Box<CompilationError>),
-    #[error("Failed to compile to sierra:\n {0}")]
-    SierraCompilation(String),
+    // #[error("Failed to compile to sierra:\n {0}")]
+    // SierraCompilation(String),
     #[error(transparent)]
     Metadata(#[from] MetadataError),
     #[error(transparent)]
@@ -176,13 +190,55 @@ impl FileWriter {
 fn run(args: impl Iterator<Item = String>) -> Result<Vec<MaybeRelocatable>, Error> {
     let args = Args::try_parse_from(args)?;
 
-    let compiler_config = CompilerConfig {
-        replace_ids: true,
-        ..CompilerConfig::default()
-    };
-    let sierra_program = (*compile_cairo_project_at_path(&args.filename, compiler_config)
-        .map_err(|err| Error::SierraCompilation(err.to_string()))?)
-    .clone();
+    // let compiler_config = CompilerConfig {
+    //     replace_ids: true,
+    //     ..CompilerConfig::default()
+    // };
+
+    // ADDED LINES FOR SCARB.TOML
+    let ui = Ui::new(Verbosity::default(), OutputFormat::Text);
+
+    let metadata = MetadataCommand::new().inherit_stderr().exec().unwrap();
+
+    let package = args.packages_filter.match_one(&metadata).unwrap();
+    println!("Package {:#?}", package);
+
+    ScarbCommand::new().arg("build").run()?;
+
+    let filename = format!("{}.sierra.json", package.name);
+    println!("filename {:#?}", filename);
+    let scarb_target_dir =
+        "/mnt/c/Users/Giuseppe/source/repos/cairo-vm/cairo_programs/cairo-1-programs/target"; //env::var("SCARB_TARGET_DIR")?;
+    let scarb_profile = "dev"; //env::var("SCARB_PROFILE")?;
+    let path = Utf8PathBuf::from(scarb_target_dir.clone())
+        .join(scarb_profile.clone())
+        .join(filename.clone());
+
+    // ensure!(
+    //     path.exists(),
+    //     formatdoc! {r#"
+    //         package has not been compiled, file does not exist: {filename}
+    //         help: run `scarb build` to compile the package
+    //     "#}
+    // );
+
+    ui.print(Status::new("Running", &package.name));
+
+    let sierra_program = serde_json::from_str::<VersionedProgram>(
+        &fs::read_to_string(path.clone())
+            .with_context(|| format!("failed to read Sierra file: {path}"))
+            .unwrap(),
+    )
+    .with_context(|| format!("failed to deserialize Sierra program: {path}"))
+    .unwrap()
+    .into_v1()
+    .with_context(|| format!("failed to load Sierra program: {path}"))
+    .unwrap();
+    // END
+
+    // let sierra_program = (*compile_cairo_project_at_path(&args.filename, compiler_config)
+    //     .map_err(|err| Error::SierraCompilation(err.to_string()))?)
+    // .clone();
 
     let metadata_config = Some(Default::default());
 
